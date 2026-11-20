@@ -1,0 +1,36 @@
+:root[data-accent="teal"] {
+  --primary: #14645b;
+  --primary-hover: #104c46;
+  --accent-text: light-dark(#125d55, #99ddd1);
+  --focus-bg: light-dark(#dcf4ee, #203e39);
+  --focus-border: light-dark(#338677, #7dbdaf);
+  --focus-text: light-dark(#174e45, #d8f6ef);
+}
+
+:root[data-accent="rose"] {
+  --primary: #953d60;
+  --primary-hover: #76304c;
+  --accent-text: light-dark(#873454, #f6b7cf);
+  --focus-bg: light-dark(#fbe7ef, #482d39);
+  --focus-border: light-dark(#a95c7a, #db95b0);
+  --focus-text: light-dark(#702c48, #fbe0ea);
+}
+
+:root[data-accent="amber"] {
+  --primary: #84551c;
+  --primary-hover: #644017;
+  --accent-text: light-dark(#784c17, #f5cd92);
+  --focus-bg: light-dark(#fff0d8, #453723);
+  --focus-border: light-dark(#996c30, #d6b57f);
+  --focus-text: light-dark(#694417, #f8e8cc);
+}
+
+:root:is([data-accent="teal"], [data-accent="rose"], [data-accent="amber"]) {
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+}
+@font-face{font-family:Bricolage;src:url('BricolageGrotesque.ttf')} h1,h2,h3{font-family:Bricolage,sans-serif} :root{--bg:light-dark(#9aaa9e,#141824);--surface:light-dark(#c6d1c7,#1e2433);--text:light-dark(#172e24,#edf1fa)}
+:root[data-accent='clay']{--primary:#794934;--accent:#794934;--primary-hover:color-mix(in srgb,#794934 80%,black);--accent-hover:var(--primary-hover);--accent-text:light-dark(#794934,#edf1fa);--focus-bg:light-dark(color-mix(in srgb,#794934 14%,white),#303741);--focus-border:var(--accent-text);--focus-text:var(--accent-text)}
+:root[data-accent='slate']{--primary:#364e72;--accent:#364e72;--primary-hover:color-mix(in srgb,#364e72 80%,black);--accent-hover:var(--primary-hover);--accent-text:light-dark(#364e72,#edf1fa);--focus-bg:light-dark(color-mix(in srgb,#364e72 14%,white),#303741);--focus-border:var(--accent-text);--focus-text:var(--accent-text)}
+:root[data-accent='plum']{--primary:#634562;--accent:#634562;--primary-hover:color-mix(in srgb,#634562 80%,black);--accent-hover:var(--primary-hover);--accent-text:light-dark(#634562,#edf1fa);--focus-bg:light-dark(color-mix(in srgb,#634562 14%,white),#303741);--focus-border:var(--accent-text);--focus-text:var(--accent-text)}
+:root[data-accent='sage']{--primary:#294c3c;--accent:#294c3c;--primary-hover:color-mix(in srgb,#294c3c 80%,black);--accent-hover:var(--primary-hover);--accent-text:light-dark(#294c3c,#edf1fa);--focus-bg:light-dark(color-mix(in srgb,#294c3c 14%,white),#303741);--focus-border:var(--accent-text);--focus-text:var(--accent-text)}
