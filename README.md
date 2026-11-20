@@ -14,4 +14,4 @@ The packaged app stores calendar blocks and settings in `%LOCALAPPDATA%\Pianissi
 
 To run from source instead, install Python 3 and run `py -3 -m pip install -r requirements.txt`, then run `run.bat` as administrator. To rebuild the Windows package, install PyInstaller and run `py -3 -m PyInstaller --noconfirm Pianissimo.spec`.
 
-Calendar feed support is limited: recurring events and calendar time-zone identifiers are not expanded, so check your calendar before using auto-fill. Calendar events are commitments, not automatically protected focus blocks. Only the blocks you create in Pianissimo activate the blocker.
+Calendar feeds expand recurring events with time zones, exclusions, and moved occurrences. Review the imported commitments before using auto-fill; the calendar timeline currently displays 07:00–22:00. Calendar events are commitments, not automatically protected focus blocks. Only the blocks you create in Pianissimo activate the blocker.

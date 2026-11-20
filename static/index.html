@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-accent="lime">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pianissimo - Productivity Calendar & Distraction Blocker</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="accents.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="appearance.js"></script>
   <script src="accent.js" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,13 +15,21 @@
 </head>
 <body>
   <div class="app-layout">
+    <nav class="nav-rail" aria-label="Workspace navigation">
+      <a class="rail-brand" href="#calendar" aria-label="Pianissimo calendar">p<span>.</span></a>
+      <a class="rail-link" href="#calendar" title="Calendar" aria-label="Calendar">&#9638;</a>
+      <a class="rail-link" href="#focusTimer" title="Focus timer" aria-label="Focus timer">&#9684;</a>
+      <a class="rail-link" href="#calendarConnection" title="Calendar connection" aria-label="Calendar connection">&#8644;</a>
+      <a class="rail-link" href="#focusHistoryTitle" title="Focus history" aria-label="Focus history">&#9776;</a>
+      <a class="rail-link rail-settings" href="#calendarTheme" title="Appearance" aria-label="Appearance">&#9881;</a>
+    </nav>
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="logo-area">
-        <div class="logo-icon">🛡️</div>
+        <div class="logo-icon" aria-hidden="true">p.</div>
         <div>
           <h2>Pianissimo</h2>
-          <p class="subtitle">Calendar and focus</p>
+          <p class="subtitle">A little space to focus</p>
         </div>
       </div>
 
@@ -55,7 +65,7 @@
       </div>
 
       <!-- Focus Mode Timer -->
-      <div class="panel-card timer-card">
+      <div class="panel-card timer-card" id="focusTimer">
         <h3>Focus timer</h3>
         <div class="timer-display" id="timerDisplay">25:00</div>
         <div class="timer-controls">
@@ -64,7 +74,7 @@
         </div>
       </div>
       <!-- Feed Connection Card -->
-      <div class="panel-card">
+      <div class="panel-card" id="calendarConnection">
         <h3>Google Calendar</h3>
         <p class="card-desc">Paste your Google Calendar secret iCal address.</p>
         <div class="input-group">
@@ -82,7 +92,7 @@
       <div class="panel-card highlight-card">
         <h3>Schedule focus</h3>
         <p class="card-desc">Automatically find open time slots and schedule productive blocks. Scheduled blocks trigger distraction blocking while the desktop app runs.</p>
-        <p class="card-desc">Check your calendar first: recurring events and some calendar time zones are not yet supported, so suggested slots may overlap commitments.</p>
+        <p class="card-desc">Sync and review your commitments before filling open slots. Imported events include recurring occurrences and calendar time zones.</p>
         <div class="form-row">
           <label for="autoCategory">Category</label>
           <select id="autoCategory">
@@ -137,11 +147,12 @@
     </aside>
 
     <!-- Main Calendar Area -->
-    <main class="main-content">
+    <main class="main-content" id="calendar">
       <!-- Top Bar -->
       <header class="topbar">
         <div class="calendar-title">
-          <h1>Calendar</h1>
+          <span class="eyebrow">YOUR WORKSPACE</span>
+          <h1>Make room for focus.</h1>
           <p class="week-heading" id="weekRangeHeading" aria-live="polite"></p>
         </div>
         <div class="nav-controls" aria-label="Week navigation">
@@ -156,10 +167,10 @@
           </div>
           <select id="calendarTheme" aria-label="Calendar appearance">
             <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="dark" selected>Dark</option>
             <option value="system">System</option>
           </select>
-          <select id="calendarAccent" aria-label="Calendar accent color" title="Accent color"><option value="sage" selected>Sage</option><option value="slate">Slate blue</option><option value="plum">Plum</option><option value="clay">Clay</option>
+          <select id="calendarAccent" aria-label="Calendar accent color" title="Accent color"><option value="lime" selected>Lime</option><option value="sage">Sage</option><option value="slate">Slate blue</option><option value="plum">Plum</option><option value="clay">Clay</option>
             <option value="violet">Violet</option>
             <option value="teal">Teal</option>
             <option value="rose">Rose</option>
@@ -168,6 +179,8 @@
         </div>
       </header>
 
+      <details class="planning-details">
+        <summary>Daily rhythm <span>Energy windows, recovery &amp; notes</span></summary>
       <section class="weather" aria-label="Day forecast">
         <div><strong id="forecast"></strong><small id="windows"></small></div>
         <label>Chronotype <select id="chrono"><option value="-1">Early bird</option><option value="0">Balanced</option><option value="1">Night owl</option></select></label>
@@ -175,12 +188,13 @@
         <label>One action item from your last call <input id="dump" maxlength="240" placeholder="Write one sentence"></label>
         <div id="tomorrow"></div>
       </section>
+      </details>
       <div class="calendar-key">
         <div class="legend" aria-label="Calendar legend">
           <span class="legend-item"><span class="dot gcal-dot"></span> Google Calendar</span>
           <span class="legend-item"><span class="dot focus-dot"></span> Focus block</span>
         </div>
-        <span>Select an open time to schedule focus</span>
+        <button id="newFocusBtn" class="btn btn-primary btn-sm">+ New focus block</button>
       </div>
 
       <!-- Calendar Grid Container -->

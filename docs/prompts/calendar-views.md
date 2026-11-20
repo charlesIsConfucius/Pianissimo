@@ -1,0 +1,18 @@
+# Day, week, and month views — implementation prompt for GPT Sol
+
+Author: GPT Sol. The requested Gemini Flash author could not run because its quota was exhausted.
+
+Add Google Calendar-style Day / Week / Month navigation to Pianissimo using its existing Python HTTP server and plain JavaScript. Inspect `static/app.js`, `static/liquid.js`, `static/index.html`, `static/style.css`, `static/dashboard.css`, `static/accents.css`, and `app.py` first. Preserve the charcoal/neutral visual direction, all accent choices, light/dark/system preferences, and current desktop blocker behavior.
+
+Current state: `renderWeek()` builds a Monday-first seven-column grid with 52-pixel hourly slots, 07:00–22:00. `currentWeekStart`, `START_HOUR`, `END_HOUR`, and `SLOT_HEIGHT` are used across rendering and energy/recovery logic. Imported events and persisted `productiveBlocks` have different semantics; only focus blocks activate blocking. `liquid.js` adds forecasts, flexible/fixed/optional blocks, extensions, and recovery intervals. Audit those dependencies before refactoring.
+
+Implement:
+
+- A clearly labeled Day / Week / Month segmented control, one selected-date state, and one source of truth for the visible range. Preserve the selected date across view changes. Today and previous/next move by the active view's period; update accessible labels and headings. Persist the preferred view with graceful storage failure handling.
+- Day and week timelines with an all-day lane, accurate event positions, legible overlap columns, a current-time indicator, and access to every hour so early/late commitments remain visible. Split multi-day events into visible segments without modifying source timestamps. Handle local dates, DST, and exclusive all-day end dates correctly. Keep calendar row sizing and event positioning synchronized.
+- A Monday-first month grid with surrounding-month days, today and selected-day treatment, compact event/task labels, and an accessible overflow action opening that day's agenda. Clicking a day can open day view; provide an explicit action to create a block. Keep day selection separate from creation to avoid accidental blocks.
+- Display imported commitments alongside planned study/focus blocks with clear text/legend distinctions as well as color. Keep create, edit, delete, category, duration, persistence, and blocking activation intact. Treat the existing named focus block as the scheduled study task. If standalone unscheduled tasks are needed, document the proposed model separately rather than silently adding an unpersisted task list.
+- Fetch imported events for the actual visible range, including month-grid boundary days, with protection against stale requests. Coordinate a bounded date-range API in `app.py` with existing week clients. Keep auto-fill's chosen range explicit; changing the calendar view must not silently broaden it or create a month of blocks.
+- Responsive layouts, keyboard-operable controls and event actions, visible focus states, readable text in every theme, reduced-motion support, and clear loading/error/empty states. Preserve energy forecasts and flexible block behavior where applicable.
+
+Verify view switching, period navigation across year/month boundaries, February/leap years, DST, all-day and overnight spans, overlaps, empty data, early/late events, create/edit/delete round trips, import races, blocker scheduling independence from the selected view, appearance persistence, and narrow screens. Use meaningful targeted tests and browser interaction checks. Report implementation, validation, and any real limitations. Do the implementation directly; do not spawn agents.

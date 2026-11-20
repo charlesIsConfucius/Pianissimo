@@ -490,14 +490,19 @@ function renderEventsOnGrid(dayDates) {
     const st = new Date(blk.start);
     const et = new Date(blk.end);
     const title = `${blk.category}: ${blk.name}`;
-    renderBlockCard(
-      st, 
-      et, 
-      title, 
-      'event-productive ' + (blk.physics || 'rubber'), 
-      () => { openEditModal(blk); },
-      (blk.physics || 'rubber') + ' block', blk
-    );
+    for (const day of dayDates) {
+      const from = new Date(day);
+      const until = new Date(day);
+      from.setHours(START_HOUR, 0, 0, 0);
+      until.setHours(END_HOUR, 0, 0, 0);
+      if (st >= until || et <= from) continue;
+      renderBlockCard(
+        new Date(Math.max(st, from)), new Date(Math.min(et, until)), title,
+        'event-productive ' + (blk.physics || 'rubber'),
+        () => { openEditModal(blk); },
+        (blk.physics || 'rubber') + ' block', blk
+      );
+    }
   });
 }
 
@@ -822,5 +827,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   applyTheme();
+  document.getElementById('newFocusBtn').addEventListener('click', () => {
+    openCreateModal(formatDate(new Date()), 9);
+  });
   init();
 });

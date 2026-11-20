@@ -1,7 +1,19 @@
 const minute = 60000;
 const byId = id => document.getElementById(id);
-const readSetting = (key, fallback) => JSON.parse(localStorage.getItem('liquid.' + key) || JSON.stringify(fallback));
-const remember = (key, value) => localStorage.setItem('liquid.' + key, JSON.stringify(value));
+const readSetting = (key, fallback) => {
+  try {
+    const value = JSON.parse(localStorage.getItem('liquid.' + key));
+    if (Array.isArray(fallback)) return Array.isArray(value) ? value : fallback;
+    if (fallback && typeof fallback === 'object') return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+    return typeof value === typeof fallback ? value : fallback;
+  } catch {
+    return fallback;
+  }
+};
+const remember = (key, value) => {
+  try { localStorage.setItem('liquid.' + key, JSON.stringify(value)); }
+  catch { /* Keep the current session usable when storage is unavailable. */ }
+};
 let forecastDate;
 const overruns = readSetting('overruns', {});
 let reminders = readSetting('reminders', []);

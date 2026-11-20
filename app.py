@@ -96,14 +96,23 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"error": "Origin not allowed"}, status=403)
             return
         parsed = urllib.parse.urlparse(self.path)
-        content_len = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
         try:
+            content_len = int(self.headers.get("Content-Length", 0))
+            if content_len < 0 or content_len > 2 * 1024 * 1024:
+                self._send_json({"error": "Request body is too large or invalid."}, status=400)
+                return
+            body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
             payload = json.loads(body)
-        except Exception:
-            payload = {}
+            if not isinstance(payload, dict):
+                raise ValueError("Expected an object")
+        except (ValueError, UnicodeError):
+            self._send_json({"error": "Send a valid JSON object."}, status=400)
+            return
 
         if parsed.path == "/api/sync":
+            if not isinstance(payload.get("url", ""), str):
+                self._send_json({"error": "Calendar URL must be text."}, status=400)
+                return
             url = payload.get("url", "").strip()
             if not url:
                 config = load_json(CONFIG_FILE, {})
@@ -141,8 +150,33 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
 
         elif parsed.path == "/api/blocks":
             # Save or update productive blocks
-            blocks = payload.get("blocks", [])
-            save_json(DATA_FILE, blocks)
+            blocks = payload.get("blocks")
+            try:
+                if not isinstance(blocks, list):
+                    raise ValueError("Blocks must be a list.")
+                ids = set()
+                for block in blocks:
+                    if not isinstance(block, dict):
+                        raise ValueError("Each block must be an object.")
+                    block_id = block.get("id")
+                    if not isinstance(block_id, str) or not block_id or block_id in ids:
+                        raise ValueError("Each block needs a unique text ID.")
+                    ids.add(block_id)
+                    for field in ("name", "category", "physics"):
+                        if field in block and not isinstance(block[field], str):
+                            raise ValueError(f"Block {field} must be text.")
+                    start = datetime.fromisoformat(block["start"].replace("Z", "+00:00"))
+                    end = datetime.fromisoformat(block["end"].replace("Z", "+00:00"))
+                    if end <= start:
+                        raise ValueError("Block end must be after its start.")
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                self._send_json({"error": "Invalid focus blocks. Check IDs, dates and times."}, status=400)
+                return
+            try:
+                save_json(DATA_FILE, blocks)
+            except OSError:
+                self._send_json({"error": "Could not save focus blocks. Please try again."}, status=500)
+                return
             self._send_json({"success": True, "blocks": blocks})
         else:
             self._send_json({"error": "Not Found"}, status=404)
