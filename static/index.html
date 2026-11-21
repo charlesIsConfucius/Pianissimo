@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="accents.css">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="calendar-score.css">
+  <link rel="stylesheet" href="focus-panels.css">
   <script src="appearance.js"></script>
   <script src="accent.js" defer></script>
 </head>
@@ -75,12 +76,32 @@
       <div class="panel-card timer-card" id="focusTimer">
         <h3>Focus timer</h3>
         <div class="timer-display" id="timerDisplay">25:00</div>
+        <p id="timerPriority" class="timer-priority" hidden></p>
         <div class="timer-controls">
           <button id="startTimerBtn" class="btn btn-sm btn-primary">Start</button>
           <button id="resetTimerBtn" class="btn btn-sm btn-secondary">Reset</button>
         </div>
         <p id="timerStatus" class="card-desc" role="status" hidden></p>
       </div>
+
+      <section class="panel-card score-card" aria-labelledby="scoreTitle">
+        <div class="score-heading"><div><p class="weekly-focus-eyebrow">MAKE ROOM FOR WHAT MATTERS</p><h3 id="scoreTitle">Today's score</h3></div><span id="scoreCount" class="score-count">0 / 3</span></div>
+        <p class="card-desc">Three priorities. One thing at a time.</p>
+        <ol id="priorityList" class="priority-list" aria-label="Today's priorities"></ol>
+        <p id="scoreStatus" class="card-desc" role="status"></p>
+      </section>
+
+      <section class="panel-card movement-card" aria-labelledby="movementTitle">
+        <p class="weekly-focus-eyebrow">A LITTLE LOOK AHEAD</p>
+        <h3 id="movementTitle">Next movement</h3>
+        <p id="movementScope" class="card-desc"></p>
+        <p id="movementCountdown" class="movement-countdown"></p>
+        <h4 id="movementName" class="movement-name"></h4>
+        <p id="movementTime" class="card-desc"></p>
+        <button id="movementAction" class="btn btn-secondary btn-sm" type="button">Plan a focus block</button>
+        <ol id="movementTimeline" class="movement-timeline" aria-label="Following events"></ol>
+        <p id="movementSource" class="card-desc movement-source" role="status"></p>
+      </section>
 
       <details class="panel-card workspace-tools">
         <summary>Workspace tools</summary>
@@ -165,7 +186,7 @@
       <!-- Top Bar -->
       <header class="topbar">
         <div class="calendar-title">
-          <h1>Calendar</h1>
+          <h1 id="workspaceHeading">Calendar</h1>
           <p class="week-heading" id="weekRangeHeading" aria-live="polite"></p>
         </div>
         <div class="nav-controls" id="weekControls" aria-label="Week navigation">
@@ -195,6 +216,19 @@
           </select>
         </div>
       </header>
+
+      <section id="weeklyFocus" class="weekly-focus" aria-labelledby="weeklyFocusTitle" hidden>
+        <div class="weekly-focus-header">
+          <div><p class="weekly-focus-eyebrow">YOUR FOCUS</p><h2 id="weeklyFocusTitle">Last 7 days</h2><p class="card-desc">Actual focus recorded by Pianissimo</p></div>
+          <div class="weekly-focus-average"><strong id="weeklyFocusAverage">0h 0m</strong><span>per day</span></div>
+        </div>
+        <p id="weeklyFocusStatus" class="card-desc" role="status">Loading focus history...</p>
+        <button id="weeklyFocusRetry" class="btn btn-secondary btn-sm" type="button" hidden>Retry</button>
+        <div id="weeklyFocusContent" hidden>
+          <ol id="weeklyFocusChart" class="weekly-focus-chart" aria-label="Daily recorded focus for the last seven days"></ol>
+          <div class="weekly-focus-total"><span>7-day total</span><strong id="weeklyFocusTotal"></strong></div>
+        </div>
+      </section>
 
       <div id="calendarBody" class="calendar-body">
         <details class="planning-details" id="rhythmDetails">
@@ -342,6 +376,7 @@
   </dialog>
 
   <script src="liquid.js"></script><script src="app.js"></script>
+  <script src="focus-panels.js"></script>
   <script src="app-access.js"></script>
 </body>
 </html>

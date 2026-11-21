@@ -1,5 +1,6 @@
 customtkinter
 psutil
 pywin32
+pywebview>=6.2,<7
 recurring-ical-events>=3.8,<4
 tzdata

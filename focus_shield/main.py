@@ -6,10 +6,10 @@ Launches the scheduler, website blocker, window monitor, and GUI.
 import sys
 import os
 import threading
-import webbrowser
 import socketserver
 import ctypes
 import subprocess
+from contextlib import ExitStack
 
 # Ensure package path is accessible
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,62 +22,43 @@ from focus_shield.core.config import ConfigManager
 from focus_shield.core.scheduler import FocusScheduler
 from focus_shield.core.website_blocker import WebsiteBlocker
 from focus_shield.core.monitor import WindowMonitor
-from focus_shield.gui.app_window import FocusShieldApp
+from focus_shield.gui.desktop_controls import DesktopControls
+from focus_shield.gui.workspace import run_workspace
 
 
 def main():
     if not ctypes.windll.shell32.IsUserAnAdmin():
         raise RuntimeError("Pianissimo needs administrator approval to block websites across Windows. Run it as administrator.")
-    print("=" * 60)
-    print("🛡️  FocusShield - Distraction Blocker & Focus Suite")
-    print("=" * 60)
-
-    # 1. Initialize configuration
-    config_mgr = ConfigManager()
-
     # Reserve the calendar port before changing any website blocks.
     socketserver.ThreadingTCPServer.allow_reuse_address = True
-    calendar_server = socketserver.ThreadingTCPServer(("127.0.0.1", calendar_app.PORT), calendar_app.CalendarHandler)
+    address = ("127.0.0.1", calendar_app.PORT)
+    with ExitStack() as cleanup:
+        calendar_server = cleanup.enter_context(socketserver.ThreadingTCPServer(address, calendar_app.CalendarHandler))
+        config = ConfigManager()
+        scheduler = FocusScheduler(config)
+        scheduler.start()
+        cleanup.callback(scheduler.stop)
 
-    # 2. Initialize scheduler
-    scheduler = FocusScheduler(config_mgr)
-    scheduler.start()
+        # The watchdog removes this process's hosts entries if the app exits unexpectedly.
+        command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, os.path.join(parent_dir, "launch.py")]
+        subprocess.Popen(command + ["--watch-parent", str(os.getpid())], creationflags=subprocess.CREATE_NO_WINDOW)
+        website_blocker = WebsiteBlocker(config, scheduler)
+        website_blocker.start()
+        cleanup.callback(website_blocker.stop)
 
-    # An independent watchdog removes our entries if this process crashes.
-    command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, os.path.join(parent_dir, "launch.py")]
-    subprocess.Popen(command + ["--watch-parent", str(os.getpid())], creationflags=subprocess.CREATE_NO_WINDOW)
-    website_blocker = WebsiteBlocker(config_mgr, scheduler)
-    website_blocker.start()
-    calendar_server.scheduler = scheduler
-    calendar_server.website_blocker = website_blocker
+        controls = DesktopControls(config, scheduler, website_blocker)
+        cleanup.callback(controls.stop)
+        controls.start()
+        monitor = WindowMonitor(config, scheduler, on_blocked_event=controls.notify)
+        monitor.start()
+        cleanup.callback(monitor.stop)
 
-    # 4. Initialize Desktop GUI
-    app = FocusShieldApp(config_mgr, scheduler)
-    app.website_blocker = website_blocker
-
-    # 5. Initialize Window Monitor with callback to GUI
-    def on_blocked(block_type: str, target: str, message: str):
-        app.show_block_notification(block_type, target, message)
-
-    monitor = WindowMonitor(config_mgr, scheduler, on_blocked_event=on_blocked)
-    monitor.start()
-    app.set_monitor(monitor)
-    calendar_server.app_monitor = monitor
-    threading.Thread(target=calendar_server.serve_forever, daemon=True).start()
-    if not os.environ.get("PIANISSIMO_NO_BROWSER"):
-        webbrowser.open(f"http://127.0.0.1:{calendar_app.PORT}")
-
-    # 6. Run GUI loop
-    try:
-        app.mainloop()
-    finally:
-        print("[FocusShield] Shutting down services...")
-        monitor.stop()
-        scheduler.stop()
-        website_blocker.stop()
-        calendar_server.shutdown()
-        calendar_server.server_close()
-        print("[FocusShield] Goodbye! Stay productive.")
+        calendar_server.scheduler = scheduler
+        calendar_server.website_blocker = website_blocker
+        calendar_server.app_monitor = monitor
+        threading.Thread(target=calendar_server.serve_forever, daemon=True).start()
+        cleanup.callback(calendar_server.shutdown)
+        run_workspace(f"http://{address[0]}:{address[1]}", controls.show)
 
 
 if __name__ == "__main__":

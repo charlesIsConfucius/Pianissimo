@@ -26,12 +26,13 @@ ctk.set_default_color_theme("blue")
 class FocusShieldApp(ctk.CTk):
     def __init__(self, config_manager: ConfigManager, scheduler: FocusScheduler):
         super().__init__()
+        self.withdraw()
 
         self.config_manager = config_manager
         self.scheduler = scheduler
         self.monitor: Optional[WindowMonitor] = None
 
-        self.title("Pianissimo - Focus and Calendar")
+        self.title("Pianissimo - Desktop controls")
         self.geometry("980x720")
         self.minsize(860, 620)
 

@@ -3,6 +3,8 @@ let currentWeekStart = getMonday(new Date());
 let gcalEvents = [];
 let activeFeed = "";
 let syncVersion = 0;
+// Imported events cover one fetched week, not the user's entire calendar.
+let calendarFeedState = { status: 'disconnected', week: null };
 let productiveBlocks = [];
 let editingBlockId = null;
 let inspectedEvent = null;
@@ -85,6 +87,8 @@ function setupWorkspace() {
   const toggle = byId('calendarToggle');
   function setCollapsed(collapsed) {
     byId('calendarBody').hidden = collapsed;
+    byId('weeklyFocus').hidden = !collapsed;
+    byId('workspaceHeading').textContent = collapsed ? 'Focus overview' : 'Calendar';
     byId('weekControls').hidden = collapsed;
     byId('weekRangeHeading').hidden = collapsed;
     document.querySelector('.app-layout').classList.toggle('calendar-hidden', collapsed);
@@ -215,7 +219,51 @@ async function loadFocusHistory() {
     retry.hidden = false;
   } finally {
     updateStudyGoal();
+    renderWeeklyFocus();
   }
+}
+
+function renderWeeklyFocus() {
+  const status = byId('weeklyFocusStatus');
+  const content = byId('weeklyFocusContent');
+  const average = byId('weeklyFocusAverage');
+  byId('weeklyFocusRetry').hidden = historyAvailable;
+  if (!historyAvailable) {
+    status.textContent = 'Focus history is unavailable. Open Pianissimo and try again.';
+    content.hidden = true;
+    average.textContent = '—';
+    return;
+  }
+  const now = new Date();
+  const totals = new Map(focusHistoryDays.map(day => [day.date, day.seconds]));
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + index);
+    return { date, seconds: totals.get(formatDate(date)) || 0 };
+  });
+  const total = days.reduce((sum, day) => sum + day.seconds, 0);
+  const max = Math.max(1, ...days.map(day => day.seconds));
+  average.textContent = formatFocusDuration(total / 7);
+  byId('weeklyFocusTotal').textContent = formatFocusDuration(total);
+  const chart = byId('weeklyFocusChart');
+  chart.replaceChildren();
+  days.forEach(day => {
+    const item = document.createElement('li');
+    const label = day.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    item.setAttribute('aria-label', `${label}: ${formatFocusDuration(day.seconds)}`);
+    const track = document.createElement('div');
+    track.className = 'weekly-focus-track';
+    const bar = document.createElement('div');
+    bar.className = 'weekly-focus-bar';
+    bar.style.height = `${day.seconds ? Math.max(2, day.seconds / max * 100) : 0}%`;
+    track.appendChild(bar);
+    const caption = document.createElement('span');
+    caption.textContent = day.date.toLocaleDateString(undefined, { weekday: 'short' });
+    item.title = `${label}: ${formatFocusDuration(day.seconds)}`;
+    item.append(track, caption);
+    chart.appendChild(item);
+  });
+  status.textContent = total ? '' : 'Your recorded focus will appear here after a session.';
+  content.hidden = false;
 }
 
 function formatFocusDuration(seconds) {
@@ -346,6 +394,7 @@ function updateShieldUI(data) {
 // Setup Event Listeners
 function setupEventListeners() {
   document.getElementById('focusHistoryRetry').addEventListener('click', loadFocusHistory);
+  document.getElementById('weeklyFocusRetry').addEventListener('click', loadFocusHistory);
   document.getElementById('focusHistoryDownload').addEventListener('click', downloadFocusRecap);
   document.getElementById('syncBtn').addEventListener('click', () => {
     const url = document.getElementById('calendarUrl').value.trim();
@@ -415,6 +464,8 @@ function setupEventListeners() {
 async function syncCalendar(url) {
   activeFeed = url;
   const version = ++syncVersion;
+  const requestedWeek = formatDate(currentWeekStart);
+  calendarFeedState = { status: 'loading', week: requestedWeek };
   const fillButton = document.getElementById('autoFillBtn');
   fillButton.disabled = true;
   gcalEvents = [];
@@ -427,22 +478,27 @@ async function syncCalendar(url) {
     const res = await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, week: formatDate(currentWeekStart) })
+      body: JSON.stringify({ url, week: requestedWeek })
     });
     const data = await res.json();
     if (version !== syncVersion) return;
     if (res.ok && data.success) {
       fillButton.disabled = false;
       gcalEvents = data.events;
+      calendarFeedState = { status: 'ready', week: requestedWeek };
       statusBadge.textContent = `Synced ${data.count} events!`;
       statusBadge.style.color = 'var(--success)';
       renderWeek();
     } else {
+      calendarFeedState = { status: 'error', week: requestedWeek };
+      if (typeof renderNextMovement === 'function') renderNextMovement();
       statusBadge.textContent = data.error || 'Sync failed.';
       statusBadge.style.color = 'var(--danger)';
     }
   } catch (err) {
     if (version !== syncVersion) return;
+    calendarFeedState = { status: 'error', week: requestedWeek };
+    if (typeof renderNextMovement === 'function') renderNextMovement();
     statusBadge.textContent = 'Sync failed. Check connection.';
     statusBadge.style.color = 'var(--danger)';
   }
@@ -476,6 +532,7 @@ function loadSampleEvents() {
   sample.push(createSampleEvent(monday, 4, 16, 0, 17, 0, 'Weekly Review'));
 
   gcalEvents = sample;
+  calendarFeedState = { status: 'sample', week: formatDate(currentWeekStart) };
   document.getElementById('syncStatus').textContent = `Loaded ${sample.length} sample events.`;
   document.getElementById('syncStatus').style.color = 'var(--success)';
   renderWeek();
@@ -508,6 +565,7 @@ function revealToday() {
 
 // Render the 7-day Calendar Grid
 function renderWeek() {
+  if (typeof renderNextMovement === 'function') renderNextMovement();
   const grid = document.getElementById('calendarGrid');
   grid.replaceChildren();
   grid.style.setProperty('--slot-height', `${SLOT_HEIGHT}px`);
@@ -1029,5 +1087,6 @@ window.addEventListener('DOMContentLoaded', () => {
     savePreference('calendarTheme', picker.value);
   });
   setupWorkspace();
+  setupFocusPanels();
   init();
 });
