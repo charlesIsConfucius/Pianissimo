@@ -15,7 +15,7 @@ function client(storage) {
     document: {
       addEventListener() {},
       getElementById() { return { value: '' }; },
-      createElement() { return { style: {}, dataset: {}, addEventListener() {}, appendChild() {} }; },
+      createElement() { return { style: {}, dataset: {}, setAttribute() {}, appendChild() {} }; },
       querySelector(selector) {
         slots.push(selector);
         return { appendChild(card) { cards.push(card); } };
@@ -73,4 +73,33 @@ test('focus blocks outside the visible days and hours do not render', () => {
     renderEventsOnGrid([new Date(2026,10,20)]);
   `);
   assert.equal(app.cards.length, 0);
+});
+
+test('overlapping cards occupy separate lanes and adjacent cards reclaim their width', () => {
+  const app = client({ getItem() { return null; } });
+  app.run(`
+    const at = time => '2026-11-20T' + time + ':00';
+    gcalEvents = [{summary:'Lecture', start:at('09:00'), end:at('10:30')}];
+    productiveBlocks = [{id:'study', start:at('09:30'), end:at('10:00')},
+      {id:'review', start:at('10:30'), end:at('11:00')}];
+    renderEventsOnGrid([new Date(2026,10,20)]);
+  `);
+  assert.equal(app.cards.length, 3);
+  assert.equal(app.cards[0].style.right, 'calc(50% + 2px)');
+  assert.equal(app.cards[1].style.left, 'calc(50% + 2px)');
+  assert.equal(app.cards[2].style.right, 'calc(0% + 2px)');
+});
+
+test('weekly study totals reset Monday and ignore future dates, across a year boundary', () => {
+  const app = client({ getItem() { return null; } });
+  app.run(`const days = [
+    {date:'2026-12-27', seconds:1800},
+    {date:'2026-12-28', seconds:1200},
+    {date:'2027-01-01', seconds:600},
+    {date:'2027-01-04', seconds:900},
+  ];`);
+  assert.equal(app.run('studySecondsThisWeek(days, new Date(2026,11,27))'), 1800);
+  assert.equal(app.run('studySecondsThisWeek(days, new Date(2026,11,28))'), 1200);
+  assert.equal(app.run('studySecondsThisWeek(days, new Date(2027,0,1))'), 1800);
+  assert.equal(app.run('studySecondsThisWeek(days, new Date(2027,0,4))'), 900);
 });

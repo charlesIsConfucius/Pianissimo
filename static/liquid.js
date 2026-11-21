@@ -26,8 +26,7 @@ function paintEnergy(slot, hour) {
   for (const [start,end,label,color] of windows) {
     const a = Math.max(0,start+offset-hour), b = Math.min(1,end+offset-hour);
     if (a >= b) continue;
-    slot.style.backgroundImage = 'linear-gradient(to bottom, transparent '+a*100+'%, '+color+' '+a*100+'% '+b*100+'%, transparent '+b*100+'%)';
-    slot.title = label;
+    slot.style.setProperty('--energy-band', 'linear-gradient(to bottom, transparent '+a*100+'%, '+color+' '+a*100+'% '+b*100+'%, transparent '+b*100+'%)');
   }
 }
 
@@ -79,65 +78,96 @@ function showForecast(date) {
       byId('modalBlockName').value=r.name;
       byId('modalCategory').value=r.category;
       byId('physics').value='vapor';
+      byId('blockOptions').open = true;
       byId('blockModal').dataset.reminder=r.id;
     };
     tray.appendChild(button);
   }
 }
 
-function ripple(item) {
+async function ripple(item, statusId) {
+  if (blockSavePending) return false;
   const imported = gcalEvents.includes(item);
-  const start = +new Date(item.start), oldEnd = +new Date(effectiveEnd(item)), end = oldEnd+20*minute;
-  const limit = new Date(start); limit.setHours(END_HOUR,0,0,0);
-  const walls = fixedEvents().filter(e=>e!==item).map(e=>({start:+new Date(e.start),end:+new Date(effectiveEnd(e))}));
-  if (end>limit || walls.some(w=>w.start<end && w.end>oldEnd)) {
-    alert('The extension reaches a fixed appointment or the end of the day.'); return;
+  const start = +new Date(item.start);
+  const oldEnd = +new Date(effectiveEnd(item));
+  const end = oldEnd + 20 * minute;
+  const limit = new Date(start).setHours(END_HOUR, 0, 0, 0);
+  const walls = fixedEvents().filter(event => event !== item).map(event => ({
+    start: +new Date(event.start), end: +new Date(effectiveEnd(event)),
+  }));
+  if (end > limit || walls.some(wall => wall.start < end && wall.end > oldEnd)) {
+    showStatus(statusId, 'The extension reaches a fixed appointment or the end of the day.');
+    return false;
   }
-  const original = item.end, key = eventKey(item), prior = overruns[key];
-  if (imported) overruns[key]=end; else item.end=new Date(end).toISOString();
-  walls.push(...airlocks(false)); walls.sort((a,b)=>a.start-b.start);
-  const changes = [], deferred = [];
-  let cursor=end;
-  for (const b of productiveBlocks.filter(b=>b!==item && b.physics!=='concrete' && new Date(b.end)>oldEnd && new Date(b.start)<limit).sort((a,b)=>new Date(a.start)-new Date(b.start))) {
-    const duration= new Date(b.end)-new Date(b.start);
-    let at=Math.max(cursor,+new Date(b.start)), length=0;
-    for (const wall of [...walls,{start:+limit,end:+limit}]) {
-      if (wall.end<=at && wall.start<limit) continue;
-      const gap=Math.min(wall.start,+limit)-at;
-      if (gap>=duration || (b.physics!=='vapor' && gap>=Math.min(duration,10*minute))) { length=Math.min(duration,gap); break; }
-      if (b.physics==='vapor') break;
-      at=Math.max(at,wall.end);
+
+  // Calculate recovery slots with the proposed extension, then restore current state while saving.
+  const originalEnd = item.end;
+  const extendedEnd = new Date(end).toISOString();
+  const key = eventKey(item);
+  const prior = overruns[key];
+  if (imported) overruns[key] = end;
+  else item.end = extendedEnd;
+  try {
+    walls.push(...airlocks(false));
+  } finally {
+    if (!imported) item.end = originalEnd;
+    else if (prior === undefined) delete overruns[key];
+    else overruns[key] = prior;
+  }
+  walls.sort((a, b) => a.start - b.start);
+  walls.push({ start: limit, end: limit });
+
+  const changes = new Map();
+  if (!imported) changes.set(item, { ...item, end: extendedEnd });
+  const deferred = new Set();
+  let cursor = end;
+  const flexible = productiveBlocks
+    .filter(block => block !== item && block.physics !== 'concrete' && new Date(block.end) > oldEnd && new Date(block.start) < limit)
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  for (const block of flexible) {
+    const duration = new Date(block.end) - new Date(block.start);
+    const optional = block.physics === 'vapor';
+    let at = Math.max(cursor, +new Date(block.start));
+    let length = 0;
+    for (const wall of walls) {
+      if (wall.end <= at && wall.start < limit) continue;
+      const gap = Math.min(wall.start, limit) - at;
+      if (gap >= duration || (!optional && gap >= Math.min(duration, 10 * minute))) {
+        length = Math.min(duration, gap);
+        break;
+      }
+      if (optional) break;
+      at = Math.max(at, wall.end);
     }
     if (!length) {
-      if (b.physics==='vapor') { deferred.push(b); continue; }
-      if (!imported) item.end=original;
-      else if (prior) overruns[key]=prior; else delete overruns[key];
-      alert('There is no room for '+b.name+' before the day ends.'); return;
+      if (optional) {
+        deferred.add(block);
+        continue;
+      }
+      showStatus(statusId, `There is no room for ${block.name} before the day ends.`);
+      return false;
     }
-    changes.push([b,at,at+length]); cursor=at+length;
+    cursor = at + length;
+    changes.set(block, { ...block, start: new Date(at).toISOString(), end: new Date(cursor).toISOString() });
   }
-  const before=[...document.querySelectorAll('[data-block-id]')].map(el=>[el.dataset.blockId,el.getBoundingClientRect()]);
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (const el of document.querySelectorAll('[data-block-id]')) {
-      if (!deferred.some(b=>b.id===el.dataset.blockId)) continue;
-      const ghost=el.cloneNode(true), rect=el.getBoundingClientRect();
-      Object.assign(ghost.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',pointerEvents:'none',zIndex:99});
-      document.body.appendChild(ghost);
-      ghost.animate([{opacity:1},{opacity:0,transform:'translateY(-12px)'}],{duration:400}).onfinish=()=>ghost.remove();
-    }
+
+  if (changes.size || deferred.size) {
+    const blocks = productiveBlocks.filter(block => !deferred.has(block)).map(block => changes.get(block) || block);
+    if (!await commitBlocks(blocks, statusId)) return false;
   }
-  const tomorrow=new Date(start); tomorrow.setDate(tomorrow.getDate()+1);
-  reminders.push(...deferred.map(b=>({...b,date:formatDate(tomorrow)})));
-  productiveBlocks=productiveBlocks.filter(b=>!deferred.includes(b));
-  for (const [b,a,z] of changes) Object.assign(b,{start:new Date(a).toISOString(),end:new Date(z).toISOString()});
-  remember('reminders',reminders); remember('overruns',overruns);
-  syncBlocksToBackend(); renderWeek();
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (const el of document.querySelectorAll('[data-block-id]')) {
-      const old=before.find(([id])=>id===el.dataset.blockId)?.[1], now=el.getBoundingClientRect();
-      if (old && now.height) el.animate([{transform:'translateY('+(old.top-now.top)+'px) scaleY('+old.height/now.height+')'},{transform:'none'}],{duration:600,easing:'cubic-bezier(.2,.9,.35,1.14)'});
-    }
+
+  if (imported) {
+    overruns[key] = end;
+    remember('overruns', overruns);
   }
+  if (deferred.size) {
+    const tomorrow = new Date(start);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    reminders.push(...Array.from(deferred, block => ({ ...block, date: formatDate(tomorrow) })));
+    remember('reminders', reminders);
+  }
+  renderWeek();
+  return true;
 }
 
 let breathingTimer;

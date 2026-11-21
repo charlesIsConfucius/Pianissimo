@@ -21,6 +21,7 @@ BASE_DIR = DATA_ROOT
 DATA_FILE = os.path.join(BASE_DIR, "productivity_blocks.json")
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 STATIC_DIR = os.path.join(RESOURCE_ROOT, "static")
+APP_ACCESS_PATH = "/api/shield/apps"
 
 def parse_ics(ics_text: str, week_start: date) -> List[Dict[str, Any]]:
     """Expand recurring events with their time zones, exceptions and overrides."""
@@ -83,6 +84,9 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json({"error": "Open Pianissimo to view focus history."}, status=503)
                 return
             self._send_json({"days": scheduler.focus_history.daily_totals()})
+        elif parsed.path == APP_ACCESS_PATH:
+            if self._check_app_access_origin():
+                self._handle_app_access()
         elif parsed.path == "/api/data":
             config = load_json(CONFIG_FILE, {"calendar_url": ""})
             blocks = load_json(DATA_FILE, [])
@@ -91,11 +95,18 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        origin = self.headers.get("Origin")
-        if origin and origin not in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"):
-            self._send_json({"error": "Origin not allowed"}, status=403)
-            return
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == APP_ACCESS_PATH:
+            if not self._check_app_access_origin(write=True):
+                return
+            if self.headers.get_content_type() != "application/json":
+                self._send_json({"error": "Send app changes as JSON."}, status=415)
+                return
+        else:
+            origin = self.headers.get("Origin")
+            if origin and origin not in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"):
+                self._send_json({"error": "Origin not allowed"}, status=403)
+                return
         try:
             content_len = int(self.headers.get("Content-Length", 0))
             if content_len < 0 or content_len > 2 * 1024 * 1024:
@@ -109,7 +120,9 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"error": "Send a valid JSON object."}, status=400)
             return
 
-        if parsed.path == "/api/sync":
+        if parsed.path == APP_ACCESS_PATH:
+            self._handle_app_access(payload)
+        elif parsed.path == "/api/sync":
             if not isinstance(payload.get("url", ""), str):
                 self._send_json({"error": "Calendar URL must be text."}, status=400)
                 return
@@ -181,10 +194,48 @@ class CalendarHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self._send_json({"error": "Not Found"}, status=404)
 
+    def _check_app_access_origin(self, write=False) -> bool:
+        host = self.headers.get("Host", "").lower()
+        origin = self.headers.get("Origin")
+        port = self.server.server_address[1]
+        if (host not in (f"localhost:{port}", f"127.0.0.1:{port}")
+                or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                or ((write or origin) and origin != f"http://{host}")):
+            self._send_json({"error": "Open Pianissimo on this computer to manage apps."}, status=403)
+            return False
+        return True
+
+    def _handle_app_access(self, update=None):
+        monitor = getattr(self.server, "app_monitor", None)
+        if monitor is None:
+            self._send_json({"error": "Open the Pianissimo desktop app to view or change app rules."}, status=503)
+            return
+
+        config = monitor.config_manager
+        if update is not None:
+            allowed = update.get("allowed")
+            if not isinstance(allowed, bool):
+                self._send_json({"error": "Choose whether to allow or block the app."}, status=400)
+                return
+            try:
+                config.set_app_access(update.get("name"), allowed)
+            except ValueError as error:
+                self._send_json({"error": str(error)}, status=400)
+                return
+            except OSError:
+                self._send_json({"error": "Could not save the app rule. Try again."}, status=500)
+                return
+
+        running = monitor.get_running_user_processes()
+        result = config.app_access_status(running)
+        result["recent"] = monitor.recent_blocked_apps()
+        self._send_json(result)
+
     def _send_json(self, data: Any, status: int = 200):
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

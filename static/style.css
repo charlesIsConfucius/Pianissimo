@@ -637,28 +637,6 @@ input[type="text"]:focus, select:focus {
   font-weight: 600;
 }
 
-/* Modals */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-
-.modal-overlay.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
 .modal-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -807,10 +785,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .weather {display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.8rem 1.4rem;border-bottom:1px solid #86948c44;font-size:.82rem}
 .weather small {display:block;margin-top:.25rem}
 .weather input,.weather select {font:inherit;padding:.35rem;border:1px solid #89968d80;border-radius:5px}
-.event-card .extend {float:right;font:inherit;font-size:10px;border:0;border-radius:4px;background:#fffd;color:#263c35;cursor:pointer}
-.event-card.concrete {border-left:4px solid #706c83}
-.event-card.vapor {border:1px dashed currentColor}
-.event-card.airlock {background:#8eb7a9;color:#102d23;padding:0;font-size:9px;line-height:1;min-height:4px}
 .day-col-header {cursor:pointer}
 .breathing::before {content:"";display:inline-block;width:14px;height:14px;border:2px solid #648e7a;margin-right:.6rem;animation:box-breathe 16s linear infinite}
 @keyframes box-breathe {0%,75%,100%{transform:scale(.55)}25%,50%{transform:scale(1.15)}}

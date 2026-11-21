@@ -4,33 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pianissimo - Productivity Calendar & Distraction Blocker</title>
+  <link rel="icon" href="pianissimo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="accents.css">
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="calendar-score.css">
   <script src="appearance.js"></script>
   <script src="accent.js" defer></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app-layout">
-    <nav class="nav-rail" aria-label="Workspace navigation">
-      <a class="rail-brand" href="#calendar" aria-label="Pianissimo calendar">p<span>.</span></a>
-      <a class="rail-link" href="#calendar" title="Calendar" aria-label="Calendar">&#9638;</a>
-      <a class="rail-link" href="#focusTimer" title="Focus timer" aria-label="Focus timer">&#9684;</a>
-      <a class="rail-link" href="#calendarConnection" title="Calendar connection" aria-label="Calendar connection">&#8644;</a>
-      <a class="rail-link" href="#focusHistoryTitle" title="Focus history" aria-label="Focus history">&#9776;</a>
-      <a class="rail-link rail-settings" href="#calendarTheme" title="Appearance" aria-label="Appearance">&#9881;</a>
-    </nav>
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="logo-area">
-        <div class="logo-icon" aria-hidden="true">p.</div>
-        <div>
-          <h2>Pianissimo</h2>
-          <p class="subtitle">A little space to focus</p>
-        </div>
+        <img class="logo-mark" src="pianissimo.svg" alt="" width="46" height="38">
+        <h2>Pianissimo</h2>
       </div>
 
       <!-- Live Blocker Status Card -->
@@ -56,13 +44,32 @@
           </div>
         </div>
         <div class="shield-offline-alert" id="shieldOfflineAlert">
-          <span class="alert-icon">⚠️</span>
           <div class="alert-text">
-            <strong>Desktop App Offline</strong>
-            <span>Distraction blocking is inactive. Launch the Pianissimo desktop app to enable automatic app and website blocking during scheduled blocks.</span>
+            <span>Open the desktop app to block distractions during focus sessions.</span>
           </div>
         </div>
+        <button id="manageAppsBtn" class="btn btn-secondary btn-sm" type="button">Manage apps</button>
       </div>
+      <section class="panel-card goal-card" aria-labelledby="studyGoalTitle">
+        <div class="goal-header">
+          <h3 id="studyGoalTitle">Weekly study goal</h3>
+          <button id="editStudyGoal" class="btn-link goal-edit-btn" type="button">Set goal</button>
+        </div>
+        <div id="studyGoalProgress" hidden>
+          <label class="goal-progress-label" for="studyProgress"><strong id="studyElapsed"></strong><span id="studyTarget"></span></label>
+          <progress id="studyProgress" value="0" max="1"></progress>
+        </div>
+        <p id="studyGoalStatus" class="card-desc" role="status"></p>
+        <form id="studyGoalForm" hidden>
+          <label class="card-desc" for="studyGoalHours">Hours per week</label>
+          <div class="goal-setup">
+            <input id="studyGoalHours" type="number" min="0" max="168" step="0.25" required>
+            <button class="btn btn-primary btn-sm" type="submit">Save</button>
+            <button id="cancelStudyGoal" class="btn btn-secondary btn-sm" type="button">Cancel</button>
+          </div>
+          <p class="card-desc">Use 0 to clear the goal.</p>
+        </form>
+      </section>
 
       <!-- Focus Mode Timer -->
       <div class="panel-card timer-card" id="focusTimer">
@@ -72,77 +79,84 @@
           <button id="startTimerBtn" class="btn btn-sm btn-primary">Start</button>
           <button id="resetTimerBtn" class="btn btn-sm btn-secondary">Reset</button>
         </div>
-      </div>
-      <!-- Feed Connection Card -->
-      <div class="panel-card" id="calendarConnection">
-        <h3>Google Calendar</h3>
-        <p class="card-desc">Paste your Google Calendar secret iCal address.</p>
-        <div class="input-group">
-          <input type="text" id="calendarUrl" aria-label="Google Calendar iCal address" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" />
-          <button id="syncBtn" class="btn btn-primary">Sync Feed</button>
-        </div>
-        <div class="quick-actions">
-          <button id="loadSampleBtn" class="btn btn-secondary btn-sm">Try sample events</button>
-          <button id="howToFindBtn" class="btn-link">Where do I find this link?</button>
-        </div>
-        <div id="syncStatus" class="status-badge">Ready to sync</div>
+        <p id="timerStatus" class="card-desc" role="status" hidden></p>
       </div>
 
-      <!-- Quick Auto-Blocker -->
-      <div class="panel-card highlight-card">
-        <h3>Schedule focus</h3>
-        <p class="card-desc">Automatically find open time slots and schedule productive blocks. Scheduled blocks trigger distraction blocking while the desktop app runs.</p>
-        <p class="card-desc">Sync and review your commitments before filling open slots. Imported events include recurring occurrences and calendar time zones.</p>
-        <div class="form-row">
-          <label for="autoCategory">Category</label>
-          <select id="autoCategory">
-            <option value="Deep Work">🧠 Deep Work</option>
-            <option value="Study">📚 Study Session</option>
-            <option value="Coding">💻 Coding & Build</option>
-            <option value="Workout">🏃 Fitness / Health</option>
-            <option value="Reading">📖 Reading & Research</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="autoDuration">Block Duration</label>
-          <select id="autoDuration">
-            <option value="60">60 Minutes</option>
-            <option value="90" selected>90 Minutes (Deep Work)</option>
-            <option value="120">2 Hours</option>
-          </select>
-        </div>
-        <button id="autoFillBtn" class="btn btn-accent btn-full">Fill open slots</button>
-      </div>
-
-      <section class="panel-card focus-history" aria-labelledby="focusHistoryTitle">
-        <h3 id="focusHistoryTitle">Actual focus</h3>
-        <p class="card-desc">Tracked sessions over the last seven days. Scheduled blocks and the standalone timer above are not included.</p>
-        <div id="focusHistoryStatus" class="card-desc" role="status" aria-live="polite">Loading focus history...</div>
-        <div id="focusHistoryContent" hidden>
-          <div class="focus-history-today"><span>Today</span><strong id="focusHistoryToday"></strong></div>
-          <ol id="focusHistoryDays" class="focus-history-days" aria-label="Daily focus history, oldest first"></ol>
-          <button id="focusHistoryDownload" class="btn btn-secondary btn-sm btn-full" type="button">Download weekly recap PNG</button>
-        </div>
-        <button id="focusHistoryRetry" class="btn btn-secondary btn-sm" type="button" hidden>Retry</button>
-      </section>
-
-      <!-- Weekly Stats -->
-      <div class="panel-card">
-        <h3>This week</h3>
-        <div class="stats-grid">
-          <div class="stat-box">
-            <span class="stat-num" id="statBusy">0h</span>
-            <span class="stat-lbl">Calendar hours</span>
+      <details class="panel-card workspace-tools">
+        <summary>Workspace tools</summary>
+        <div class="workspace-tool-list">
+          <!-- Feed Connection Card -->
+          <div class="panel-card" id="calendarConnection">
+            <h3>Google Calendar</h3>
+            <p class="card-desc">Paste your Google Calendar secret iCal address.</p>
+            <div class="input-group">
+              <input type="text" id="calendarUrl" aria-label="Google Calendar iCal address" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" />
+              <button id="syncBtn" class="btn btn-primary">Sync Feed</button>
+            </div>
+            <div class="quick-actions">
+              <button id="loadSampleBtn" class="btn btn-secondary btn-sm">Try sample events</button>
+              <button id="howToFindBtn" class="btn-link">Where do I find this link?</button>
+            </div>
+            <div id="syncStatus" class="status-badge" role="status">Ready to sync</div>
           </div>
-          <div class="stat-box productive-stat">
-            <span class="stat-num" id="statProductive">0h</span>
-            <span class="stat-lbl">Scheduled focus</span>
+
+          <!-- Quick Auto-Blocker -->
+          <div class="panel-card highlight-card">
+            <h3>Schedule focus</h3>
+            <p class="card-desc">Fill free time in the displayed week. Sync your calendar first to include your commitments.</p>
+            <div class="form-row">
+              <label for="autoCategory">Category</label>
+              <select id="autoCategory">
+                <option value="Deep Work">Deep Work</option>
+                <option value="Study">Study</option>
+                <option value="Coding">Coding</option>
+                <option value="Workout">Workout</option>
+                <option value="Reading">Reading</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="autoDuration">Block Duration</label>
+              <select id="autoDuration">
+                <option value="60">60 Minutes</option>
+                <option value="90" selected>90 Minutes (Deep Work)</option>
+                <option value="120">2 Hours</option>
+              </select>
+            </div>
+            <button id="autoFillBtn" class="btn btn-accent btn-full">Fill open slots</button>
+            <p id="autoFillStatus" class="card-desc" role="status" hidden></p>
+          </div>
+
+          <section class="panel-card focus-history" aria-labelledby="focusHistoryTitle">
+            <h3 id="focusHistoryTitle">Actual focus</h3>
+            <p class="card-desc">Recorded desktop focus over the last seven days.</p>
+            <div id="focusHistoryStatus" class="card-desc" role="status" aria-live="polite">Loading focus history...</div>
+            <div id="focusHistoryContent" hidden>
+              <div class="focus-history-today"><span>Today</span><strong id="focusHistoryToday"></strong></div>
+              <ol id="focusHistoryDays" class="focus-history-days" aria-label="Daily focus history, oldest first"></ol>
+              <button id="focusHistoryDownload" class="btn btn-secondary btn-sm btn-full" type="button">Download weekly recap PNG</button>
+            </div>
+            <button id="focusHistoryRetry" class="btn btn-secondary btn-sm" type="button" hidden>Retry</button>
+          </section>
+
+          <!-- Weekly Stats -->
+          <div class="panel-card">
+            <h3>Planned hours</h3>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <span class="stat-num" id="statBusy">0h</span>
+                <span class="stat-lbl">Calendar hours</span>
+              </div>
+              <div class="stat-box productive-stat">
+                <span class="stat-num" id="statProductive">0h</span>
+                <span class="stat-lbl">Scheduled focus</span>
+              </div>
+            </div>
+            <button id="exportIcsBtn" class="btn btn-secondary btn-sm btn-full" style="margin-top: 10px;">
+              Export focus blocks (.ics)
+            </button>
           </div>
         </div>
-        <button id="exportIcsBtn" class="btn btn-secondary btn-sm btn-full" style="margin-top: 10px;">
-          Export focus blocks (.ics)
-        </button>
-      </div>
+      </details>
 
     </aside>
 
@@ -151,25 +165,28 @@
       <!-- Top Bar -->
       <header class="topbar">
         <div class="calendar-title">
-          <span class="eyebrow">YOUR WORKSPACE</span>
-          <h1>Make room for focus.</h1>
+          <h1>Calendar</h1>
           <p class="week-heading" id="weekRangeHeading" aria-live="polite"></p>
         </div>
-        <div class="nav-controls" aria-label="Week navigation">
+        <div class="nav-controls" id="weekControls" aria-label="Week navigation">
           <button id="prevWeekBtn" aria-label="Previous week" class="btn btn-secondary btn-sm">&larr;</button>
           <button id="todayBtn" class="btn btn-secondary btn-sm">Today</button>
           <button id="nextWeekBtn" aria-label="Next week" class="btn btn-secondary btn-sm">&rarr;</button>
         </div>
         <div class="topbar-right">
-          <div class="topbar-shield-pill pill-offline" id="topbarShieldPill">
-            <span class="status-indicator-dot offline" id="topbarShieldDot"></span>
-            <span id="topbarShieldText">Blocker: Offline</span>
-          </div>
+          <button id="calendarToggle" class="btn btn-secondary btn-sm" type="button" aria-expanded="true" aria-controls="calendarBody">Hide calendar</button>
+          <button class="btn btn-secondary btn-sm" type="button" popovertarget="appearancePanel">Appearance</button>
+        </div>
+        <div id="appearancePanel" class="appearance-panel" popover>
+          <label for="calendarTheme">Theme</label>
           <select id="calendarTheme" aria-label="Calendar appearance">
             <option value="light">Light</option>
             <option value="dark" selected>Dark</option>
+            <option value="grey">Grey</option>
+            <option value="beige">Beige</option>
             <option value="system">System</option>
           </select>
+          <label for="calendarAccent">Accent</label>
           <select id="calendarAccent" aria-label="Calendar accent color" title="Accent color"><option value="lime" selected>Lime</option><option value="sage">Sage</option><option value="slate">Slate blue</option><option value="plum">Plum</option><option value="clay">Clay</option>
             <option value="violet">Violet</option>
             <option value="teal">Teal</option>
@@ -179,55 +196,54 @@
         </div>
       </header>
 
-      <details class="planning-details">
-        <summary>Daily rhythm <span>Energy windows, recovery &amp; notes</span></summary>
-      <section class="weather" aria-label="Day forecast">
-        <div><strong id="forecast"></strong><small id="windows"></small></div>
-        <label>Chronotype <select id="chrono"><option value="-1">Early bird</option><option value="0">Balanced</option><option value="1">Night owl</option></select></label>
-        <button id="breathe" class="btn btn-secondary btn-sm">Start airlock</button><span id="phase"></span>
-        <label>One action item from your last call <input id="dump" maxlength="240" placeholder="Write one sentence"></label>
-        <div id="tomorrow"></div>
-      </section>
-      </details>
-      <div class="calendar-key">
-        <div class="legend" aria-label="Calendar legend">
-          <span class="legend-item"><span class="dot gcal-dot"></span> Google Calendar</span>
-          <span class="legend-item"><span class="dot focus-dot"></span> Focus block</span>
+      <div id="calendarBody" class="calendar-body">
+        <details class="planning-details" id="rhythmDetails">
+          <summary>Daily rhythm</summary>
+        <section class="weather" aria-label="Day forecast">
+          <div><strong id="forecast"></strong><small id="windows"></small></div>
+          <label>Chronotype <select id="chrono"><option value="-1">Early bird</option><option value="0">Balanced</option><option value="1">Night owl</option></select></label>
+          <button id="breathe" class="btn btn-secondary btn-sm">Start breathing exercise</button><span id="phase"></span>
+          <label>One action item from your last call <input id="dump" maxlength="240" placeholder="Write one sentence"></label>
+          <div id="tomorrow"></div>
+        </section>
+        </details>
+        <div class="calendar-key">
+          <div class="legend" aria-label="Calendar legend">
+            <span class="legend-item"><span class="dot gcal-dot"></span> Google Calendar</span>
+            <span class="legend-item"><span class="dot focus-dot"></span> Focus block</span>
+          </div>
+          <button id="newFocusBtn" class="btn btn-primary btn-sm" disabled>+ New focus block</button>
         </div>
-        <button id="newFocusBtn" class="btn btn-primary btn-sm">+ New focus block</button>
-      </div>
 
-      <!-- Calendar Grid Container -->
-      <div class="calendar-wrapper">
-        <div class="calendar-grid" id="calendarGrid">
-          <!-- Populated dynamically via JS -->
+        <!-- Calendar Grid Container -->
+        <div class="calendar-wrapper" tabindex="0" aria-label="Weekly timeline. Scroll for more days and hours.">
+          <div class="calendar-grid" id="calendarGrid">
+            <!-- Populated dynamically via JS -->
+          </div>
         </div>
       </div>
     </main>
   </div>
 
   <!-- Modal for Creating/Editing Productive Block -->
-  <div class="modal-overlay" id="blockModal">
+  <dialog class="modal-overlay" id="blockModal" aria-labelledby="modalTitle">
     <div class="modal-card">
-      <h3 id="modalTitle">Schedule Productive Block</h3>
-      <div class="modal-shield-banner">
-        🛡️ <strong>Distraction Shield:</strong> During this scheduled productive block, Pianissimo automatically blocks distracting apps and websites while the desktop app is running.
-      </div>
+      <h3 id="modalTitle">Schedule focus</h3>
+      <p class="card-desc">Scheduled blocks protect your time while the desktop app is running.</p>
       <div class="form-group">
         <label for="modalBlockName">Task / Activity Name</label>
-        <input type="text" id="modalBlockName" placeholder="e.g. Finish Algorithm Homework" />
+        <input type="text" id="modalBlockName" placeholder="e.g. Review lecture notes" autofocus />
       </div>
       <div class="form-group">
         <label for="modalCategory">Category</label>
         <select id="modalCategory">
-          <option value="Deep Work">🧠 Deep Work</option>
-          <option value="Study">📚 Study Session</option>
-          <option value="Coding">💻 Coding & Build</option>
-          <option value="Workout">🏃 Fitness / Health</option>
-          <option value="Reading">📖 Reading & Research</option>
+          <option value="Deep Work">Deep Work</option>
+          <option value="Study">Study</option>
+          <option value="Coding">Coding</option>
+          <option value="Workout">Workout</option>
+          <option value="Reading">Reading</option>
         </select>
       </div>
-      <div class="form-group"><label for="physics">Block state</label><select id="physics"><option value="rubber">Rubber - elastic</option><option value="concrete">Concrete - fixed</option><option value="vapor">Vapor - optional</option></select></div>
       <div class="form-row modal-time-row">
         <div>
           <label for="modalDate">Day</label>
@@ -242,19 +258,75 @@
           <input type="time" id="modalEndTime" />
         </div>
       </div>
+      <details class="modal-options" id="blockOptions">
+        <summary>Scheduling options</summary>
+        <div class="form-group"><label for="physics">Flexibility</label><select id="physics"><option value="rubber">Flexible</option><option value="concrete">Fixed</option><option value="vapor">Optional</option></select></div>
+        <div class="form-group"><label for="modalEndDate">End date (for overnight blocks)</label><input type="date" id="modalEndDate"></div>
+        <button id="extendBlockBtn" class="btn btn-secondary btn-sm" type="button" hidden>Extend by 20 minutes</button>
+      </details>
+      <p id="blockSaveStatus" class="card-desc" role="status" hidden></p>
       <div class="modal-actions">
-        <button id="deleteBlockBtn" class="btn btn-danger" style="display: none;">Delete</button>
+        <button id="deleteBlockBtn" class="btn btn-danger" type="button" hidden>Delete</button>
         <div style="flex: 1;"></div>
         <button id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
-        <button id="saveBlockBtn" class="btn btn-primary">Save Productive Block</button>
+        <button id="saveBlockBtn" class="btn btn-primary">Save block</button>
       </div>
     </div>
-  </div>
+  </dialog>
+
+  <dialog class="modal-overlay" id="appAccessModal" aria-labelledby="appAccessTitle">
+    <div class="modal-card">
+      <h3 id="appAccessTitle">App access during focus</h3>
+      <p id="appAccessMode" class="card-desc" hidden></p>
+      <div class="app-access-controls">
+        <label for="appAccessView" class="card-desc">Show</label>
+        <select id="appAccessView" disabled>
+          <option value="blocked">Blocked apps</option>
+          <option value="allowed">Allowed apps (whitelist)</option>
+          <option value="running">Running apps you can allow</option>
+          <option value="recent">Recent blocks</option>
+        </select>
+        <button id="refreshAppAccess" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+      </div>
+      <p id="appAccessStatus" class="card-desc" role="status"></p>
+      <ul id="appAccessList" class="app-access-list" aria-label="App rules" hidden></ul>
+      <details id="appRuleDetails" class="modal-options" hidden>
+        <summary>Add an app by name or file</summary>
+        <form id="appRuleForm" class="app-rule-form">
+          <label class="card-desc" for="appRuleName">Executable name</label>
+          <div class="app-rule-fields">
+            <input type="text" id="appRuleName" placeholder="obsidian.exe" maxlength="255" required>
+            <button id="browseAppBtn" class="btn btn-secondary btn-sm" type="button">Browse .exe</button>
+            <input type="file" id="browseAppFile" accept=".exe" hidden>
+          </div>
+          <div class="app-rule-actions">
+            <button class="btn btn-primary btn-sm" type="submit" value="allow">Allow app</button>
+            <button class="btn btn-secondary btn-sm" type="submit" value="block">Block app</button>
+          </div>
+        </form>
+      </details>
+      <div class="modal-actions app-access-actions">
+        <button id="closeAppAccess" class="btn btn-secondary btn-sm" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal-overlay" id="eventModal" aria-labelledby="eventTitle">
+    <div class="modal-card">
+      <h3 id="eventTitle"></h3>
+      <p id="eventTime" class="card-desc"></p>
+      <p id="eventActionStatus" class="card-desc" role="status" hidden></p>
+      <div class="modal-actions">
+        <button id="extendEventBtn" class="btn btn-secondary" type="button">Extend by 20 minutes</button>
+        <button id="closeEventBtn" class="btn btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Help Modal -->
-  <div class="modal-overlay" id="helpModal">
+  <dialog class="modal-overlay" id="helpModal" aria-labelledby="helpTitle">
     <div class="modal-card">
-      <h3>How to find your Google Calendar Feed URL</h3>
+      <h3 id="helpTitle">Find your Google Calendar feed URL</h3>
       <ol class="help-steps">
         <li>Open <strong>Google Calendar</strong> on your desktop (<a href="https://calendar.google.com" target="_blank">calendar.google.com</a>).</li>
         <li>On the left sidebar, find your calendar under <strong>"My calendars"</strong>.</li>
@@ -267,8 +339,9 @@
         <button id="closeHelpBtn" class="btn btn-primary">Got it!</button>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <script src="liquid.js"></script><script src="app.js"></script>
+  <script src="app-access.js"></script>
 </body>
 </html>

@@ -304,6 +304,7 @@ class FocusShieldApp(ctk.CTk):
             widget.destroy()
 
         allowed_apps = sorted(self.config_manager.data.get("allowed_apps", []))
+        self._displayed_allowed_apps = allowed_apps
         for app in allowed_apps:
             row = ctk.CTkFrame(self.apps_scroll, fg_color="#edf0f7", height=38, corner_radius=6)
             row.pack(fill="x", padx=4, pady=3)
@@ -341,28 +342,37 @@ class FocusShieldApp(ctk.CTk):
 
     def _add_selected_from_combo(self) -> None:
         val = self.combo_running_apps.get()
-        if val and val.endswith(".exe") and "whitelisted" not in val:
-            self.config_manager.add_allowed_app(val)
-            self._refresh_apps_list()
+        if val.lower().endswith(".exe") and self._change_allowed_app(val, True):
             self._scan_running_apps()
 
     def _add_manual_app(self) -> None:
         val = self.entry_manual_app.get().strip()
-        if val:
-            self.config_manager.add_allowed_app(val)
+        if val and self._change_allowed_app(val, True):
             self.entry_manual_app.delete(0, "end")
-            self._refresh_apps_list()
 
     def _browse_app_file(self) -> None:
         path = filedialog.askopenfilename(filetypes=[("Executable Files", "*.exe")])
         if path:
             exe_name = os.path.basename(path)
-            self.config_manager.add_allowed_app(exe_name)
-            self._refresh_apps_list()
+            self._change_allowed_app(exe_name, True)
 
     def _remove_app(self, app_name: str) -> None:
-        self.config_manager.remove_allowed_app(app_name)
+        self._change_allowed_app(app_name, False)
+
+    def _change_allowed_app(self, app_name: str, allowed: bool) -> bool:
+        try:
+            if allowed:
+                self.config_manager.add_allowed_app(app_name)
+            else:
+                self.config_manager.remove_allowed_app(app_name)
+        except ValueError as error:
+            messagebox.showerror("Invalid app name", str(error))
+            return False
+        except OSError:
+            messagebox.showerror("App rule could not be saved", "Try again.")
+            return False
         self._refresh_apps_list()
+        return True
 
     # -------------------------------------------------------------
     # TAB 3: BLOCKED WEBSITES
@@ -663,6 +673,8 @@ class FocusShieldApp(ctk.CTk):
         if hasattr(self, "website_blocker"):
             error = self.website_blocker.error
             self.website_status.configure(text=("Website blocking error: " + error) if error else "Website blocking is ready.", text_color="#ae3445" if error else "#525c73")
+        if self._displayed_allowed_apps != sorted(self.config_manager.data.get("allowed_apps", [])):
+            self._refresh_apps_list()
         self.after(1000, self._tick_timer)
 
     def _on_main_toggle_clicked(self) -> None:

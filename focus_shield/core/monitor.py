@@ -9,6 +9,8 @@ import os
 import threading
 import ctypes
 import ctypes.wintypes
+from collections import deque
+from datetime import datetime
 from typing import Optional, Callable, List, Set, Tuple
 import psutil
 import win32gui
@@ -38,6 +40,8 @@ class WindowMonitor:
         self._thread: Optional[threading.Thread] = None
         self._last_alert_time = 0.0
         self._last_blocked_target = ""
+        self._recent_apps = deque(maxlen=20)
+        self._recent_apps_lock = threading.Lock()
 
     def start(self) -> None:
         self._running = True
@@ -81,12 +85,18 @@ class WindowMonitor:
         names: Set[str] = set()
         for p in psutil.process_iter(["name"]):
             try:
+                if p.pid == os.getpid():
+                    continue
                 name = p.info.get("name")
                 if name and name.lower().endswith(".exe"):
                     names.add(name)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
         return sorted(list(names), key=lambda s: s.lower())
+
+    def recent_blocked_apps(self) -> List[dict]:
+        with self._recent_apps_lock:
+            return list(self._recent_apps)
 
     def _monitor_loop(self) -> None:
         while self._running:
@@ -119,7 +129,7 @@ class WindowMonitor:
 
         # Check desktop app whitelist
         if not self.config_manager.is_app_allowed(p_lower):
-            self._handle_blocked_window(hwnd, "app", process_name, f"Application '{process_name}' is not in your whitelist.")
+            self._handle_blocked_window(hwnd, "app", process_name, f"Application '{process_name}' is restricted during focus.")
             return
 
         # Website decisions belong to the Chrome extension, which sees URLs.
@@ -158,6 +168,12 @@ class WindowMonitor:
 
         self._last_alert_time = now
         self._last_blocked_target = target
+        if block_type == "app":
+            with self._recent_apps_lock:
+                self._recent_apps.appendleft({
+                    "name": target.lower(),
+                    "time": datetime.now().astimezone().isoformat(timespec="seconds"),
+                })
 
         # Fire callback for GUI overlay/banner
         if self.on_blocked_event:

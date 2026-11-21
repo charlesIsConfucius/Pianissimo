@@ -1,0 +1,110 @@
+/* Hour rules and quiet half-hour marks echo the spacing of a score. */
+.calendar-grid {
+  min-width: 630px;
+  border-radius: 9px;
+  --measure-rule: color-mix(in srgb, var(--border) 74%, transparent);
+}
+.time-col-header, .day-col-header { padding: 9px 4px; background: var(--surface); border-color: var(--border); }
+.day-col-header { border: 0; border-bottom: 1px solid var(--border); font: inherit; color: var(--text-muted); font-size: 12px; }
+.day-col-header:focus-visible { outline-offset: -3px; }
+.day-number { display: block; font-size: 22px; color: var(--text); font-weight: 550; margin-top: 2px; }
+.day-col-header.is-today { background: color-mix(in srgb, var(--surface) 86%, var(--accent-text)); border-color: var(--accent-text); }
+.day-col-header.is-today .day-number { color: var(--accent-text); }
+.time-label, .time-slot {
+  height: var(--slot-height);
+  border-color: var(--measure-rule);
+}
+.time-label, .all-day-label {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--surface);
+}
+.time-col-header { left: 0; z-index: 12; }
+.time-label[data-measure], .time-slot[data-measure] { border-bottom-color: var(--border); }
+.time-label {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.time-label::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 6px;
+  border-top: 1px solid var(--measure-rule);
+}
+.time-slot.today-col { background-color: color-mix(in srgb, var(--accent-text) 5%, transparent); }
+.time-slot:hover { background-color: var(--surface-hover); }
+.calendar-body:has(.planning-details[open]) .time-slot { background-image: var(--energy-band, none); }
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+  border: 0;
+  border-inline-start: 3px solid var(--item-border);
+  border-radius: 5px;
+  padding: 3px 5px;
+  background: var(--item-bg);
+  color: var(--item-text);
+  font: inherit;
+  line-height: 1.15;
+  font-size: 12px;
+  box-shadow: none;
+  white-space: normal;
+}
+.event-card:hover, .event-card:focus-visible { transform: none; z-index: 10; }
+.event-card:hover { background: color-mix(in srgb, var(--item-bg) 93%, var(--item-text)); }
+.event-gcal { --item-bg: var(--gcal-bg); --item-border: var(--gcal-border); --item-text: var(--gcal-text); }
+.event-productive { --item-bg: var(--focus-bg); --item-border: var(--focus-border); --item-text: var(--focus-text); }
+.event-card.concrete { border-inline-start-width: 5px; border-inline-start-color: var(--item-border); }
+.event-card.vapor { border: 1px dashed var(--item-border); border-inline-start-width: 3px; }
+.ev-title {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ev-time { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-card[data-compact] .ev-time { display: none; }
+.event-card[data-compact] .ev-title { -webkit-line-clamp: 1; }
+.event-card[data-compact] { padding-block: 0; }
+.event-card.airlock {
+  --item-bg: color-mix(in srgb, var(--surface) 82%, var(--success));
+  --item-border: var(--success);
+  --item-text: var(--text);
+  padding: 0;
+  min-height: 0;
+  font-size: 10px;
+  border-inline-start: 3px solid var(--item-border);
+  background: var(--item-bg);
+  color: var(--item-text);
+}
+.event-card.airlock .ev-title { display: none; }
+.all-day-label, .all-day-cell {
+  padding: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.all-day-label { font-size: 11px; text-align: right; color: var(--text-muted); padding-right: 8px; }
+.all-day-cell { display: grid; align-content: start; gap: 3px; min-width: 0; }
+.all-day-event {
+  background: var(--gcal-bg);
+  color: var(--gcal-text);
+  border: 0;
+  border-inline-start: 3px solid var(--gcal-border);
+  border-radius: 4px;
+  padding: 3px 5px;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}

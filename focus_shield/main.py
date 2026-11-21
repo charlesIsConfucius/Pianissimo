@@ -50,9 +50,6 @@ def main():
     website_blocker.start()
     calendar_server.scheduler = scheduler
     calendar_server.website_blocker = website_blocker
-    threading.Thread(target=calendar_server.serve_forever, daemon=True).start()
-    if not os.environ.get("PIANISSIMO_NO_BROWSER"):
-        webbrowser.open(f"http://127.0.0.1:{calendar_app.PORT}")
 
     # 4. Initialize Desktop GUI
     app = FocusShieldApp(config_mgr, scheduler)
@@ -65,6 +62,10 @@ def main():
     monitor = WindowMonitor(config_mgr, scheduler, on_blocked_event=on_blocked)
     monitor.start()
     app.set_monitor(monitor)
+    calendar_server.app_monitor = monitor
+    threading.Thread(target=calendar_server.serve_forever, daemon=True).start()
+    if not os.environ.get("PIANISSIMO_NO_BROWSER"):
+        webbrowser.open(f"http://127.0.0.1:{calendar_app.PORT}")
 
     # 6. Run GUI loop
     try:

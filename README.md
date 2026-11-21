@@ -6,7 +6,7 @@ Plan quiet work time in the calendar and automatically block distractions during
 
 1. Open `dist/Pianissimo` and double-click `Pianissimo.exe`. Approve the Windows administrator prompt to enable website blocking. Keep the entire folder together; Python is included and does not need to be installed.
 2. The desktop window runs the blocker and opens the calendar in your browser. Keep the desktop window open during focus blocks.
-3. Add blocks on the calendar. The blocker starts at each block's start time and stops at its end, unless another block, recurring schedule, or manual session is active. Manage allowed apps and blocked websites in the desktop window.
+3. Add blocks on the calendar. The blocker starts at each block's start time and stops at its end, unless another block, recurring schedule, or manual session is active. In the browser, open **Desktop Blocker → Manage apps** to view blocked apps, change the whitelist, or allow a running app. The desktop window also has app, website, schedule, and blocking settings.
 
 Website blocking applies to the exact domain and its `www` form across Windows through the hosts file. It does not cover other subdomains, existing connections, IP addresses, VPNs or applications that bypass the system hosts file. Pianissimo removes its own entries when focus ends or it exits; a watchdog also attempts cleanup if it crashes. After a shutdown or forced termination of both processes, restarting Pianissimo will clear stale entries. Website blocking errors appear in the app.
 

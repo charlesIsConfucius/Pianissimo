@@ -5,6 +5,8 @@ Handles loading, saving, and defaults for whitelists, blacklists, and schedules.
 
 import json
 import os
+import tempfile
+from threading import RLock
 from typing import Dict, List, Any
 from app_paths import DATA_ROOT, FROZEN
 
@@ -160,6 +162,7 @@ class ConfigManager:
     def __init__(self, config_path: str = DEFAULT_CONFIG_PATH):
         self.config_path = config_path
         self.data: Dict[str, Any] = {}
+        self._lock = RLock()
         self.load()
 
     def load(self) -> None:
@@ -179,46 +182,100 @@ class ConfigManager:
 
     def save(self) -> None:
         try:
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
+            with self._lock:
+                self._write_config(self.data)
+        except OSError as e:
             print(f"Error saving config: {e}")
 
-    # App whitelist helpers
+    def _write_config(self, data: Dict[str, Any]) -> None:
+        directory = os.path.dirname(os.path.abspath(self.config_path))
+        fd, temporary = tempfile.mkstemp(dir=directory, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=2, ensure_ascii=False)
+            os.replace(temporary, self.config_path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+    @staticmethod
+    def normalize_app_name(process_name: str) -> str:
+        if not isinstance(process_name, str):
+            raise ValueError("Enter an app name such as obsidian.exe.")
+        name = process_name.strip().lower()
+        if not name.endswith(".exe"):
+            name += ".exe"
+        if (not name[:-4].strip(" .") or len(name) > 255
+                or any(char in '<>:"/\\|?*' or not char.isprintable() for char in name)):
+            raise ValueError("Enter an executable name such as obsidian.exe, without a folder path.")
+        return name
+
+    def app_rules(self) -> Dict[str, Any]:
+        with self._lock:
+            return {
+                "mode": self.data.get("mode", "strict_whitelist"),
+                **{key: {name.lower() for name in self.data.get(key, [])}
+                   for key in ("allowed_apps", "blocked_apps", "system_whitelist")},
+            }
+
     def is_app_allowed(self, process_name: str) -> bool:
-        p_lower = process_name.lower().strip()
-        # System essentials are always allowed
-        if p_lower in [p.lower() for p in self.data.get("system_whitelist", [])]:
+        return self._is_app_allowed(process_name.lower().strip(), self.app_rules())
+
+    @staticmethod
+    def _is_app_allowed(name: str, rules: Dict[str, Any]) -> bool:
+        if name in rules["system_whitelist"]:
             return True
-        mode = self.data.get("mode", "strict_whitelist")
-        if mode == "strict_whitelist":
-            allowed = [p.lower() for p in self.data.get("allowed_apps", [])]
-            return p_lower in allowed
-        else:
-            # Blacklist mode
-            blocked = [p.lower() for p in self.data.get("blocked_apps", [])]
-            return p_lower not in blocked
+        if rules["mode"] == "strict_whitelist":
+            return name in rules["allowed_apps"]
+        return name not in rules["blocked_apps"]
+
+    def app_access_status(self, running_apps: List[str]) -> Dict[str, Any]:
+        rules = self.app_rules()
+        running = {app.lower() for app in running_apps}
+        protected = rules["system_whitelist"]
+        known = (running | rules["allowed_apps"] | rules["blocked_apps"]) - protected
+        blocked = {app for app in known if not self._is_app_allowed(app, rules)}
+        allowed = rules["allowed_apps"] if rules["mode"] == "strict_whitelist" else running - blocked
+        return {
+            "mode": rules["mode"],
+            "allowed": sorted(allowed - protected),
+            "blocked": sorted(blocked),
+            "running": sorted(running),
+            "protected": sorted(protected),
+        }
+
+    def set_app_access(self, process_name: str, allowed: bool) -> bool:
+        name = self.normalize_app_name(process_name)
+        with self._lock:
+            rules = self.app_rules()
+            if name in rules["system_whitelist"]:
+                if not allowed:
+                    raise ValueError("Windows essentials are always allowed.")
+                return False
+            if rules["mode"] == "strict_whitelist":
+                return self._set_app_rules(name, allowed_apps=allowed, blocked_apps=not allowed)
+            return self._set_app_rules(name, blocked_apps=not allowed)
+
+    def _set_app_rules(self, name: str, **changes: bool) -> bool:
+        with self._lock:
+            updates = {}
+            for key, enabled in changes.items():
+                apps = self.data.get(key, [])
+                without_app = [app for app in apps if app.lower() != name]
+                exists = len(without_app) != len(apps)
+                if exists != enabled:
+                    updates[key] = [*apps, name] if enabled else without_app
+            if not updates:
+                return False
+            self._write_config({**self.data, **updates})
+            self.data.update(updates)
+            return True
 
     def add_allowed_app(self, process_name: str) -> bool:
-        p_lower = process_name.lower().strip()
-        if not p_lower.endswith(".exe"):
-            p_lower += ".exe"
-        allowed = self.data.setdefault("allowed_apps", [])
-        if p_lower not in [p.lower() for p in allowed]:
-            allowed.append(p_lower)
-            self.save()
-            return True
-        return False
+        return self._set_app_rules(self.normalize_app_name(process_name), allowed_apps=True)
 
     def remove_allowed_app(self, process_name: str) -> bool:
-        p_lower = process_name.lower().strip()
-        allowed = self.data.setdefault("allowed_apps", [])
-        new_list = [p for p in allowed if p.lower() != p_lower]
-        if len(new_list) != len(allowed):
-            self.data["allowed_apps"] = new_list
-            self.save()
-            return True
-        return False
+        return self._set_app_rules(self.normalize_app_name(process_name), allowed_apps=False)
 
     # Chrome domain helpers
     def is_domain_allowed(self, domain: str) -> bool:
